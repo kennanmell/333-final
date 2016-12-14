@@ -2,6 +2,7 @@
 #include <string>
 #include <cstdlib>
 #include <string.h>
+#include <thread>
 
 using namespace std;
 
@@ -9,6 +10,9 @@ using namespace std;
 #include "provided/ClientSocket.h"
 
 #define BUFSIZE 1
+
+list<hw5_net::ClientSocket* peerSocket> sockets;
+mutex lock;
 
 // Get a JSON response from the server, going through the internet using peerSocket.
 // Sets responseJson to represent the model's JSON response.
@@ -70,32 +74,78 @@ char readChar(hw5_net::ClientSocket* peerSocket) {
     
 }
 
-int main(int argc, char** argv){
-    if (argc != 3){
-        printf("Usage: ./q12-client host port");
-        return 1;
-    }
-    int serverPort;
+void threadExec(int port) {
     try {
-        serverPort = stoi(argv[2]);
-    } catch (...){
-    }
-    
-    try {
-        string serverName(argv[1]);
-        //hw5_net::ClientSocket clientSocket(serverName, serverPort);
-        hw5_net::ClientSocket* clientSocket = new hw5_net::ClientSocket(serverName, serverPort);
+        int socketFd;
+        hw5_net::ServerSocket sock(port);
+        sock.BindAndListen(AF_INET, &socketFd);
+        cout << "Created bound socket. port = " << sock.port() << endl;
+        
+        // wait for client connection
+        int acceptedFd;
+        string clientAddr;
+        uint16_t clientPort;
+        string clientDNSName;
+        string serverAddress;
+        string serverDNSName;
+        
+        sock.Accept( &acceptedFd,
+                    &clientAddr,
+                    &clientPort,
+                    &clientDNSName,
+                    &serverAddress,
+                    &serverDNSName );
+        
+        cout << "Got connection from: " << endl
+        << "\tacceptedFd\t" << acceptedFd << endl
+        << "\tclientPort\t" << clientPort << endl
+        << "\tclientDNSName\t" << clientDNSName << endl
+        << "\tserverAddress\t" << serverAddress << endl
+        << "\tserverDNSName\t" << serverDNSName << endl;
+        
+        // wrap connection to peer with a CientSocket
+        hw5_net::ClientSocket* peerSocket = new hw5_net::ClientSocket(acceptedFd);
+        lock.lock();
+        sockets.push_front(peerSocket);
+        lock.unlock();
+        
+        thread* t = new thread(&threadExec, port);
+        
         while (true) {
-            string helloMessage = "this is the text";
-            clientSocket->WrappedWrite(helloMessage.c_str(), helloMessage.length());
-            char c = readChar(clientSocket);
-            printf("%c", c);
+            char c = readChar(peerSocket);
+            string toWrite(c);
+            lock.lock();
+            for (int i = 0; i < sockets.length(); i++) {
+                sockets[i].wrappedWrite(toWrite.c_str(), toWrite.length());
+            }
+            lock.unlock();
         }
     } catch(string errString) {
         cout << errString << endl;
-        printf("error\n");
         return 1;
     }
-    printf("exiting\n");
-    return 0;
+}
+
+int main(int argc, char *argv[]) {
+    
+    // Make sure arguments are correct.
+    if ( argc != 2 && argc != 3 ) usage(argv[0]);
+    
+    int port = 0;
+    try {
+        if ( argc == 3 ) port = stoi(argv[2]);
+    } catch (...) {
+        usage(argv[0]);
+    }
+    
+    try {
+        thread* t = new thread(&threadExec, port);
+    } catch(string errString) {
+        cout << errString << endl;
+        return 1;
+    }
+    
+    cout << "Closing" << endl;
+    
+    return EXIT_SUCCESS;
 }
