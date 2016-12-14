@@ -5,7 +5,7 @@ CFLAGS = -Wall -Wpedantic -std=c++11
 all: q12
 
 q12: $(SRC) $(HEADERS)
-	g++ $(CFLAGS) -g -O0 -o q12 $(SRC)
+	g++ -pthread $(CFLAGS) -g -O0 -o q12 $(SRC)
 
 clean:
 	rm -f *.o *~ q12

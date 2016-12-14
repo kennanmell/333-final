@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <string.h>
 #include <thread>
-#include <list>
+#include <vector>
 #include <mutex>
 
 using namespace std;
@@ -13,7 +13,7 @@ using namespace std;
 
 #define BUFSIZE 1
 
-list<hw5_net::ClientSocket*> sockets;
+vector<hw5_net::ClientSocket*>* sockets = new vector<hw5_net::ClientSocket*>();
 mutex mtx;
 
 // Get a JSON response from the server, going through the internet using peerSocket.
@@ -108,40 +108,45 @@ void threadExec(int port) {
         // wrap connection to peer with a CientSocket
         hw5_net::ClientSocket* peerSocket = new hw5_net::ClientSocket(acceptedFd);
         mtx.lock();
-        sockets.push_front(peerSocket);
+        sockets->push_back(peerSocket);
         mtx.unlock();
         
         thread* t = new thread(&threadExec, port);
         
         while (true) {
             char c = readChar(peerSocket);
-            string toWrite(c);
+            char* ct;
+            sprintf(ct, "%c", c);
+            string toWrite(ct);
             mtx.lock();
-            for (int i = 0; i < sockets.length(); i++) {
-                sockets[i].wrappedWrite(toWrite.c_str(), toWrite.length());
+            for (uint i = 0; i < sockets->size(); i++) {
+                sockets->at(i)->WrappedWrite(toWrite.c_str(), toWrite.length());
             }
             mtx.unlock();
         }
     } catch(string errString) {
         cout << errString << endl;
-        return 1;
     }
 }
 
 int main(int argc, char *argv[]) {
     
     // Make sure arguments are correct.
-    if ( argc != 2 && argc != 3 ) usage(argv[0]);
+    if ( argc != 2 ) {
+      printf("Usage: ./q12 port\n");
+      return 1;
+    }
     
     int port = 0;
     try {
-        if ( argc == 3 ) port = stoi(argv[2]);
+        port = stoi(argv[1]);
     } catch (...) {
-        usage(argv[0]);
+        printf("Invalid port number");
+        return 1;
     }
     
     try {
-        thread* t = new thread(&threadExec, port);
+        threadExec(port);
     } catch(string errString) {
         cout << errString << endl;
         return 1;

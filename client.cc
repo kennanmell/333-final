@@ -71,7 +71,7 @@ char readChar(hw5_net::ClientSocket* peerSocket) {
 }
 
 int main(int argc, char** argv){
-    if (argc != 3){
+    if (argc != 4){
         printf("Usage: ./q12-client host port");
         return 1;
     }
@@ -86,7 +86,7 @@ int main(int argc, char** argv){
         //hw5_net::ClientSocket clientSocket(serverName, serverPort);
         hw5_net::ClientSocket* clientSocket = new hw5_net::ClientSocket(serverName, serverPort);
         while (true) {
-            string helloMessage = "this is the text";
+            string helloMessage = string(argv[3]);
             clientSocket->WrappedWrite(helloMessage.c_str(), helloMessage.length());
             char c = readChar(clientSocket);
             printf("%c", c);
