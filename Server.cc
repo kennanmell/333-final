@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <string.h>
 #include <thread>
+#include <list>
+#include <mutex>
 
 using namespace std;
 
@@ -11,8 +13,8 @@ using namespace std;
 
 #define BUFSIZE 1
 
-list<hw5_net::ClientSocket* peerSocket> sockets;
-mutex lock;
+list<hw5_net::ClientSocket*> sockets;
+mutex mtx;
 
 // Get a JSON response from the server, going through the internet using peerSocket.
 // Sets responseJson to represent the model's JSON response.
@@ -105,20 +107,20 @@ void threadExec(int port) {
         
         // wrap connection to peer with a CientSocket
         hw5_net::ClientSocket* peerSocket = new hw5_net::ClientSocket(acceptedFd);
-        lock.lock();
+        mtx.lock();
         sockets.push_front(peerSocket);
-        lock.unlock();
+        mtx.unlock();
         
         thread* t = new thread(&threadExec, port);
         
         while (true) {
             char c = readChar(peerSocket);
             string toWrite(c);
-            lock.lock();
+            mtx.lock();
             for (int i = 0; i < sockets.length(); i++) {
                 sockets[i].wrappedWrite(toWrite.c_str(), toWrite.length());
             }
-            lock.unlock();
+            mtx.unlock();
         }
     } catch(string errString) {
         cout << errString << endl;
