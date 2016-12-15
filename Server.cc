@@ -14,6 +14,7 @@ using namespace std;
 #define BUFSIZE 1
 
 vector<hw5_net::ClientSocket*>* sockets = new vector<hw5_net::ClientSocket*>();
+vector<thread*>* threads = new vector<thread*>();
 mutex mtx;
 
 // Get a JSON response from the server, going through the internet using peerSocket.
@@ -28,11 +29,12 @@ char readChar(hw5_net::ClientSocket* peerSocket) {
 void threadExec(hw5_net::ClientSocket* peerSocket) {
     try {
         while (true) {
+	    mtx.lock();
+		printf("in loop \n");
             char c = readChar(peerSocket);
             char* ct;
             sprintf(ct, "%c", c);
             string toWrite(ct);
-            mtx.lock();
             for (uint i = 0; i < sockets->size(); i++) {
                 sockets->at(i)->WrappedWrite(toWrite.c_str(), toWrite.length());
             }
@@ -52,6 +54,12 @@ int main(int argc, char *argv[]) {
     }
     
     int port = 0;
+    try {
+	port = stoi(argv[1]);
+    } catch (...) {
+	printf("Usage: ./q12 port\n");
+    }
+
     try {
         while (true) {
             int socketFd;
@@ -86,18 +94,13 @@ int main(int argc, char *argv[]) {
             mtx.lock();
             sockets->push_back(peerSocket);
             mtx.unlock();
-            thread t(&threadExec, peerSocket);
+            printf("in loop\n");
+            thread* t = new thread(&threadExec, peerSocket);
+	    threads->push_back(t);
         }
         port = stoi(argv[1]);
     } catch (...) {
         printf("Invalid port number");
-        return 1;
-    }
-    
-    try {
-        threadExec(port);
-    } catch(string errString) {
-        cout << errString << endl;
         return 1;
     }
     
