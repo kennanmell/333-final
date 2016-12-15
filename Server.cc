@@ -13,8 +13,11 @@ using namespace std;
 
 #define BUFSIZE 1
 
+// Stores all the sockets that need to be written to on each read.
 vector<hw5_net::ClientSocket*>* sockets = new vector<hw5_net::ClientSocket*>();
+// Stores all the threads made by the main thread. There is one thread for each socket being read from.
 vector<thread*>* threads = new vector<thread*>();
+// Mutex for locking sockets.
 mutex mtx;
 
 // Get a JSON response from the server, going through the internet using peerSocket.
@@ -26,6 +29,7 @@ char readChar(hw5_net::ClientSocket* peerSocket) {
     return *buf;
 }
 
+// Repeatedly reads from peerSocket and writes what it reads to all sockets in sockets.
 void threadExec(hw5_net::ClientSocket* peerSocket) {
     try {
         while (true) {
@@ -61,6 +65,7 @@ int main(int argc, char *argv[]) {
     }
 
     try {
+	// Continuously look for new connections and add them to sockets when found.
         while (true) {
             int socketFd;
             hw5_net::ServerSocket sock(port);

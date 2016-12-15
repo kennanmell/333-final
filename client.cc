@@ -10,6 +10,8 @@ using namespace std;
 
 #define BUFSIZE 1
 
+// This file attempts to implement a client in order to test the server's functionality.
+
 // Get a JSON response from the server, going through the internet using peerSocket.
 // Sets responseJson to represent the model's JSON response.
 // Returns 0 if successful, 1 otherwise. responseJson is undefined if 1 is returned.
